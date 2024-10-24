@@ -2,6 +2,7 @@ package ru.semavin.TechRadarPolls.controllers;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,7 +25,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequiredArgsConstructor
-
+@Slf4j
 public class TechnologyController {
     private final TechnologyService technologyService;
     private final PollService pollService;
@@ -44,6 +45,7 @@ public class TechnologyController {
                         errors.put("section", "SECTION NOT FOUND");
                         return null;
                     });
+             log.info("found sectionObject: " + sectionObject);
         }
         Category categoryObject = null;
         if (category != null) {
@@ -52,9 +54,11 @@ public class TechnologyController {
                         errors.put("category", "CATEGORY NOT FOUND");
                         return null;
                     });
+            log.info("found sectionObject: " + categoryObject);
         }
 
         if (!errors.isEmpty()) {
+            log.error("Controller/api/technology: Map with errors not empty");
             Map<String, Object> response = new HashMap<>();
             response.put("error", "Invalid query parameters");
             response.put("details", errors);
@@ -74,13 +78,16 @@ public class TechnologyController {
     public TechnologyWithPollsResultDTO getVotesCountForAllRings(@PathVariable(name = "tech_id") Integer id) throws ErrorResponseServer {
         Technology technology = technologyService.findOne(id)
                 .orElseThrow(() -> new TechnologyNotFoundException("TECHNOLOGY NOT FOUND"));
+        log.warn("Controller/api/dashboard/" + id + ":Technology NOT FOUND");
         TechnologyWithPollsResultDTO resultDTO = null;
         try {
             resultDTO = modelMapper.map(technology, TechnologyWithPollsResultDTO.class);
             resultDTO.setVotes(pollService.countUsersForTechByAllRings(id));
         } catch (Exception e) {
+            log.error("Controller/api/dashboard:Error occurred on the server");
             throw new ErrorResponseServer("An unexpected error occurred on the server. Please try again later.");
         }
+        log.info("Controller/api/dashboard/" + id + ":return result info: " + resultDTO);
         return resultDTO;
     }
     @PostMapping("/poll")
@@ -88,12 +95,15 @@ public class TechnologyController {
                                         BindingResult bindingResult){
         try {
             if (bindingResult.hasErrors()){
+                log.warn("Controller/poll: code 400");
                 return MessageResponsePoll.builder().code("400")
                         .message("BAD REQUEST")
                         .build();
             }
+            log.info("Controller/poll: poll save:" + pollDTO);
             pollService.save(convertPollDtoToPoll(pollDTO));
         } catch (Exception e) {
+            log.warn("Controller/poll: code 500");
             return MessageResponsePoll.builder().code("500")
                     .message("INTERNAL_SERVER_ERROR")
                     .build();
