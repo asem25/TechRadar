@@ -138,29 +138,14 @@ class TechnologyControllerTest {
         // Arrange
         Technology technology = Technology.builder().techId(1L).build();
         when(technologyService.findOne(anyInt())).thenReturn(Optional.of(technology));
-        Ring ring1 = new Ring();
-        ring1.setRingName("Adopt");
-
-        Ring ring2 = new Ring();
-        ring2.setRingName("Trial");
+        Ring ring1 = Ring.builder().ringName("Adopt").build();
+        Ring ring2 = Ring.builder().ringName("Trial").build();
 
         // Список голосов
-        Poll poll1 = new Poll();
-        poll1.setRing(ring1);
-        poll1.setUser(User.builder().userId(1L).build());
-
-        Poll poll2 = new Poll();
-        poll2.setRing(ring1);
-        poll2.setUser(User.builder().userId(2L).build());
-
-        Poll poll3 = new Poll();
-        poll3.setRing(ring2);
-        poll3.setUser(User.builder().userId(3L).build()); // Пользователь 1 повторно голосует, но он считается уникальным
-
+        Poll poll1 = Poll.builder().ring(ring1).user(User.builder().userId(1L).build()).build();
+        Poll poll2 = Poll.builder().ring(ring1).user(User.builder().userId(2L).build()).build();
+        Poll poll3 = Poll.builder().ring(ring2).user(User.builder().userId(3L).build()).build();
         List<Poll> polls = List.of(poll1, poll2, poll3);
-
-
-
         when(pollService.countUsersForTechByAllRings(1)).thenReturn(
                 Map.of(
                         ring1, 2,
@@ -189,13 +174,10 @@ class TechnologyControllerTest {
     @Test
     void testSendPoll_ValidPollDTO_ShouldReturnSuccessMessage() {
         // Arrange
-        PollDTO pollDTO = new PollDTO();
-        pollDTO.setRingResult("Adopt");
-        pollDTO.setUser_id(1);
-        pollDTO.setTech_id(1);
-        when(ringService.findByName(pollDTO.getRingResult())).thenReturn(Optional.of(new Ring()));
-        when(userService.findById(pollDTO.getUser_id())).thenReturn(Optional.of(new User()));
-        when(technologyService.findOne(pollDTO.getTech_id())).thenReturn(Optional.of(new Technology()));
+        PollDTO pollDTO = PollDTO.builder().ringResult("Adopt").user_id(1).tech_id(1).build();
+        when(ringService.findByName(pollDTO.getRingResult())).thenReturn(Optional.of(Ring.builder().build()));
+        when(userService.findById(pollDTO.getUser_id())).thenReturn(Optional.of(User.builder().build()));
+        when(technologyService.findOne(pollDTO.getTech_id())).thenReturn(Optional.of(Technology.builder().build()));
 
         BindingResult bindingResult = mock(BindingResult.class);
         when(bindingResult.hasErrors()).thenReturn(false);
@@ -210,7 +192,7 @@ class TechnologyControllerTest {
     @Test
     void testSendPoll_InvalidPollDTO_ShouldReturnBadRequestMessage() {
         // Arrange
-        PollDTO pollDTO = new PollDTO();
+        PollDTO pollDTO = PollDTO.builder().build();
         BindingResult bindingResult = mock(BindingResult.class);
         when(bindingResult.hasErrors()).thenReturn(true);
 
@@ -224,7 +206,7 @@ class TechnologyControllerTest {
     @Test
     void testSendPoll_ExceptionThrown_ShouldReturnInternalServerErrorMessage() {
         // Arrange
-        PollDTO pollDTO = new PollDTO();
+        PollDTO pollDTO = PollDTO.builder().build();
         BindingResult bindingResult = mock(BindingResult.class);
         when(bindingResult.hasErrors()).thenReturn(false);
         when(ringService.findByName(any())).thenThrow(new RuntimeException("Error"));
