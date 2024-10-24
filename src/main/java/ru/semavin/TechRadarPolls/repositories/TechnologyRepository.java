@@ -13,6 +13,7 @@ import java.util.List;
 @Repository
 public interface TechnologyRepository extends JpaRepository<Technology, Long> {
 
-//    @Query("SELECT t FROM Technology t WHERE (:category IS NULL OR t.category.cat_id = :category) AND (:section IS NULL OR t.section = :section)")
-//    List<Technology> findByCategoryOrSection(@Param("category") Category category, @Param("section") Section section);
+    List<Technology> findByCategoryAndSection(Category category,Section section);
+    List<Technology> findByCategory(Category category);
+    List<Technology> findBySection(Section section);
 }

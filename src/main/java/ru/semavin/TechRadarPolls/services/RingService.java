@@ -12,4 +12,7 @@ public class RingService {
     public List<Ring> findAll(){
         return ringRepository.findAll();
     }
+    public Optional<Ring> findByName(String name){
+        return ringRepository.findByRingName(name);
+    }
 }

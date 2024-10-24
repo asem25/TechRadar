@@ -12,5 +12,5 @@ public class Ring {
     private Long ring_id;
 
     @Column(name = "ring_name", nullable = false)
-    private String ring_name;
+    private String ringName;
 }

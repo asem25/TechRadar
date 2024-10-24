@@ -8,31 +8,27 @@ import ru.semavin.TechRadarPolls.models.Section;
 import ru.semavin.TechRadarPolls.models.Technology;
 import ru.semavin.TechRadarPolls.repositories.TechnologyRepository;
 
-
 import java.util.List;
 import java.util.Optional;
 
 @Service
-
+@Transactional
 @RequiredArgsConstructor
 public class TechnologyService {
 
     private  final TechnologyRepository technologyRepository;
-    @Transactional
-    public List<Technology> findAll(){
-        return technologyRepository.findAll();
-    }
-    @Transactional
-    public void save(Technology technology){
-        technologyRepository.save(technology);
-    }
-
-    @Transactional
     public Optional<Technology> findOne(Integer techId){
         return technologyRepository.findById(Long.valueOf(techId));
     }
-    @Transactional
-    public Technology addTechnology(Technology technology){
-        return technologyRepository.save(technology);
+    public List<Technology> findAllByFilter(Category category, Section section) {
+        if (category != null && section != null) {
+            return technologyRepository.findByCategoryAndSection(category, section);
+        } else if (category != null) {
+            return technologyRepository.findByCategory(category);
+        } else if (section != null) {
+            return technologyRepository.findBySection(section);
+        } else {
+            return technologyRepository.findAll();
+        }
     }
 }

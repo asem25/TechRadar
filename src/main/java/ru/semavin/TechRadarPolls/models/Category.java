@@ -12,5 +12,5 @@ public class Category {
     private Long cat_id;
 
     @Column(name = "cat_name", nullable = false)
-    private String roleName;
+    private String catName;
 }

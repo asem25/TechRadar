@@ -19,15 +19,7 @@ import java.util.stream.Collectors;
 public class PollService {
     private final PollRepository pollRepository;
     private final RingService ringService;
-    public Poll findLatestPollForTechnology(Long id){
-        return pollRepository.findFirstByTechnologyTechIdOrderByTimeDesc(id);
-    }
-    public Poll findLatestPollForTechnology(Long id, LocalDateTime time){
-        return pollRepository.findFirstByTechnologyTechIdAndTimeAfterOrderByTimeDesc(id, time);
-    }
-    public List<Poll> findTop2ByTechnologyIdOrderByPollTimeDesc(Long id){
-        return pollRepository.findTop2ByTechnologyTechIdOrderByTimeDesc(id);
-    }
+
     public Map<Ring, Integer> countUsersForTechByAllRings(Integer techId){
         List<Poll> polls = pollRepository.findByTechnologyTechId(Long.valueOf(techId));
 
@@ -43,5 +35,8 @@ public class PollService {
 
         return ringCountMap;
 
+    }
+    public void save(Poll poll){
+        pollRepository.save(poll);
     }
 }

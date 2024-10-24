@@ -12,5 +12,5 @@ public class Section {
     private Long sec_id;
 
     @Column(name = "sec_name", nullable = false)
-    private String sec_name;
+    private String secName;
 }
