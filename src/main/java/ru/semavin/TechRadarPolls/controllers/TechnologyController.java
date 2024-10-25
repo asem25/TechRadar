@@ -1,5 +1,7 @@
 package ru.semavin.TechRadarPolls.controllers;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +28,8 @@ import java.util.stream.Collectors;
 @RestController
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Главный контроллер",
+        description = "Реализует механизм опросов для сервиса ТЕХРАДАР" )
 public class TechnologyController {
     private final TechnologyService technologyService;
     private final PollService pollService;
@@ -35,6 +39,9 @@ public class TechnologyController {
     private final CategoryService categoryService;
     private final SectionService sectionService;
     @GetMapping("/api/technology")
+    @Operation(summary = "Запрос для формирования техрадара.",
+                description = ". Возвращает список всех технологий,\n" +
+                        "соответствующих фильтрам (категория, секция), кроме архивированных.")
     public ResponseEntity<Map<String, Object>> findAllByFilters(@RequestParam(required = false) String category,
                                              @RequestParam(required = false) String section){
         Map<String, String> errors = new HashMap<>();
@@ -75,6 +82,9 @@ public class TechnologyController {
     }
 
     @GetMapping("/api/dashboard/{tech_id}")
+    @Operation(summary = "Запрос на формирование дашборда.",
+            description = "Возвращает количество актуальных голосов\n" +
+                    "за указанную технологию (последний голос каждого пользователя).")
     public TechnologyWithPollsResultDTO getVotesCountForAllRings(@PathVariable(name = "tech_id") Integer id) throws ErrorResponseServer {
         Technology technology = technologyService.findOne(id)
                 .orElseThrow(() -> new TechnologyNotFoundException("TECHNOLOGY NOT FOUND"));
@@ -95,6 +105,9 @@ public class TechnologyController {
         return resultDTO;
     }
     @PostMapping("/poll")
+    @Operation(summary = "Запрос на добавление результата опроса для указанной технологии.",
+            description = " Данные добавляются в\n" +
+                    "таблицу опросников для указанной технологии.")
     public MessageResponsePoll sendPoll(@RequestBody @Valid PollDTO pollDTO,
                                         BindingResult bindingResult){
         try {
