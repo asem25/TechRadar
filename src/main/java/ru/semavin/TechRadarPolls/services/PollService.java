@@ -7,11 +7,7 @@ import ru.semavin.TechRadarPolls.models.Poll;
 import ru.semavin.TechRadarPolls.repositories.PollRepository;
 
 
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -20,7 +16,7 @@ public class PollService {
     private final PollRepository pollRepository;
     private final RingService ringService;
 
-    public Map<Ring, Integer> countUsersForTechByAllRings(Integer techId){
+    public Map<String, Integer> countUsersForTechByAllRings(Integer techId){
         List<Poll> polls = pollRepository.findByTechnologyTechId(Long.valueOf(techId));
 
         Map<Ring, Set<Long>> ringUserMap = polls.stream()
@@ -28,12 +24,19 @@ public class PollService {
                         Collectors.mapping(poll -> poll.getUser().getUserId(),
                                 Collectors.toSet())));
 
-        Map<Ring, Integer> ringCountMap = new HashMap<>();
+        Map<String, Integer> ringCountMap = new TreeMap<>();
         for (Ring ring : ringService.findAll()) {
-            ringCountMap.put(ring, ringUserMap.getOrDefault(ring, Set.of()).size());
+            ringCountMap.put(ring.getRingName(), ringUserMap.getOrDefault(ring, Set.of()).size());
         }
-
-        return ringCountMap;
+        return ringCountMap.entrySet()
+                .stream()
+                .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue,
+                        (e1, e2) -> e1,
+                        LinkedHashMap::new
+                ));
 
     }
     public void save(Poll poll){

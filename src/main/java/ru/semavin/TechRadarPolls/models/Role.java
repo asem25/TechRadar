@@ -2,7 +2,7 @@ package ru.semavin.TechRadarPolls.models;
 
 import jakarta.persistence.*;
 import lombok.Data;
-import lombok.extern.jackson.Jacksonized;
+
 
 @Entity
 @Data

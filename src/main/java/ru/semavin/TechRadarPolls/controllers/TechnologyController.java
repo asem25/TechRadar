@@ -20,7 +20,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+
 import java.util.stream.Collectors;
 
 @RestController
@@ -78,11 +78,15 @@ public class TechnologyController {
     public TechnologyWithPollsResultDTO getVotesCountForAllRings(@PathVariable(name = "tech_id") Integer id) throws ErrorResponseServer {
         Technology technology = technologyService.findOne(id)
                 .orElseThrow(() -> new TechnologyNotFoundException("TECHNOLOGY NOT FOUND"));
-        log.warn("Controller/api/dashboard/" + id + ":Technology NOT FOUND");
         TechnologyWithPollsResultDTO resultDTO = null;
         try {
-            resultDTO = modelMapper.map(technology, TechnologyWithPollsResultDTO.class);
-            resultDTO.setVotes(pollService.countUsersForTechByAllRings(id));
+            resultDTO = TechnologyWithPollsResultDTO.builder()
+                    .techId(technology.getTechId())
+                    .name(technology.getName())
+                    .category(technology.getCategory().getCatName())
+                    .section(technology.getSection().getSecName())
+                    .votes(pollService.countUsersForTechByAllRings(id))
+                    .build();
         } catch (Exception e) {
             log.error("Controller/api/dashboard:Error occurred on the server");
             throw new ErrorResponseServer("An unexpected error occurred on the server. Please try again later.");

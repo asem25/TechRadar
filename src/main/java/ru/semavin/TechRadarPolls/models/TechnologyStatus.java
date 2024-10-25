@@ -1,10 +1,13 @@
 package ru.semavin.TechRadarPolls.models;
 
 import jakarta.persistence.*;
+
 import lombok.Data;
+
 
 @Data
 @Entity
+
 @Table(name = "statuses")
 public class TechnologyStatus {
     @Id
