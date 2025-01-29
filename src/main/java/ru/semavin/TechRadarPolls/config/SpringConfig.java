@@ -1,6 +1,7 @@
 package ru.semavin.TechRadarPolls.config;
 
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.*;
 import lombok.RequiredArgsConstructor;
@@ -28,9 +29,9 @@ public class SpringConfig {
         public OpenAPI customOpenAPI() {
                 return new OpenAPI()
                         .info(new Info()
-                                .title("Tech Radar Polls API")
+                                .title("Tech Radar API")
                                 .version("1.0")
-                                .description("API для управления Tech Radar Polls")
+                                .description("API для управления Tech Radar")
                                 .contact(new Contact()
                                         .name("Semavin Aleksandr")
                                         .email("asemavin250604@gmail.com"))
@@ -38,4 +39,5 @@ public class SpringConfig {
                                         .name("Apache 2.0")
                                         .url("https://springdoc.org")));
         }
+
 }
