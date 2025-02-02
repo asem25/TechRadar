@@ -1,4 +1,4 @@
-package ru.semavin.TechRadarPolls;
+package ru.semavin.TechRadarPolls.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;

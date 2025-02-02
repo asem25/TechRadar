@@ -12,7 +12,9 @@ import ru.semavin.TechRadarPolls.listener.TechRadarKafkaListener;
 import ru.semavin.TechRadarPolls.producer.TechRadarKafkaProducer;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -22,7 +24,7 @@ public class AuthController {
     private final TechRadarKafkaProducer techRadarKafkaProducer;
     private final TechRadarKafkaListener techRadarKafkaListener;
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody UserLoginDTO userLoginDTO) {
+    public ResponseEntity<String> login(@RequestBody UserLoginDTO userLoginDTO) {
         try {
 
             CompletableFuture<String> futureResponse = techRadarKafkaListener.registerResponseFuture("login");
@@ -37,16 +39,21 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody UserRegisterDTO userRegisterDTO) {
+    public ResponseEntity<String> register(@RequestBody UserRegisterDTO userRegisterDTO) {
         try {
             CompletableFuture<String> futureResponse = techRadarKafkaListener.registerResponseFuture("register");
             techRadarKafkaProducer.sendRegisterEvent("register", userRegisterDTO);
-
             String response = futureResponse.get(10, TimeUnit.SECONDS);
             return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("Failed to register user");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return ResponseEntity.status(500).body("Registration process was interrupted. Please try again.");
+        } catch (ExecutionException e) {
+            return ResponseEntity.status(500)
+                    .body("An error occurred during registration: " + e.getCause().getMessage());
+        } catch (TimeoutException e) {
+            return ResponseEntity.status(500)
+                    .body("Registration process timed out. Please try again later.");
         }
     }
     @PostMapping("/refresh")
@@ -58,8 +65,15 @@ public class AuthController {
             String response = futureResponse.get(10, TimeUnit.SECONDS);
             return ResponseEntity.ok(response);
 
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("Failed to refresh token user");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return ResponseEntity.status(500).body("login process was interrupted. Please try again.");
+        } catch (ExecutionException e) {
+            return ResponseEntity.status(500)
+                    .body("An error occurred during login: " + e.getCause().getMessage());
+        } catch (TimeoutException e) {
+            return ResponseEntity.status(500)
+                    .body("Login process timed out. Please try again later.");
         }
     }
 }
