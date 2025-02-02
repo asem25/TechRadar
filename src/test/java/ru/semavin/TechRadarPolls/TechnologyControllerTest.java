@@ -3,59 +3,59 @@ package ru.semavin.TechRadarPolls;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-import org.modelmapper.ModelMapper;
+import org.mockito.BDDMockito;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import ru.semavin.TechRadarPolls.config.TestConfig;
 import ru.semavin.TechRadarPolls.controllers.TechnologyController;
 import ru.semavin.TechRadarPolls.dtos.PollDTO;
-import ru.semavin.TechRadarPolls.dtos.TechnologyDTO;
-import ru.semavin.TechRadarPolls.dtos.TechnologyWithPollsResultDTO;
 import ru.semavin.TechRadarPolls.models.*;
 import ru.semavin.TechRadarPolls.services.*;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
-import java.util.*;
-
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.hamcrest.Matchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-
-
-@WebMvcTest(TechnologyController.class)
+@WebMvcTest(controllers = TechnologyController.class)
+@AutoConfigureMockMvc(addFilters = false)
+@Import(TestConfig.class)
 class TechnologyControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @Autowired
     private TechnologyService technologyService;
 
-    @MockBean
+    @Autowired
     private PollService pollService;
 
-    @MockBean
+    @Autowired
     private RingService ringService;
 
-    @MockBean
+    @Autowired
     private UserService userService;
 
-    @MockBean
+    @Autowired
     private CategoryService categoryService;
 
-    @MockBean
+    @Autowired
     private SectionService sectionService;
 
     @Autowired
     private ObjectMapper objectMapper;
-    @MockBean
-    private ModelMapper modelMapper;
 
     private Technology technology;
     private Category category;
@@ -65,11 +65,29 @@ class TechnologyControllerTest {
 
     @BeforeEach
     void setup() {
-        category =Category.builder().cat_id(1L).catName("BACKEND").build();
-        section = Section.builder().sec_id(2L).secName("TOOLS").build();
-        ring = Ring.builder().ring_id(1L).ringName("ADOPT").build();
-        technology = Technology.builder().techId(1L).category(category)
-                .section(section).ring(ring).name("Spring Boot").description("Framework for building Java applications.").build();
+        category = Category.builder()
+                .cat_id(1L)
+                .catName("BACKEND")
+                .build();
+
+        section = Section.builder()
+                .sec_id(2L)
+                .secName("TOOLS")
+                .build();
+
+        ring = Ring.builder()
+                .ring_id(1L)
+                .ringName("ADOPT")
+                .build();
+
+        technology = Technology.builder()
+                .techId(1L)
+                .name("Spring Boot")
+                .description("Framework for building Java applications.")
+                .category(category)
+                .section(section)
+                .ring(ring)
+                .build();
 
         pollDTO = PollDTO.builder()
                 .user_id(1)
@@ -78,76 +96,109 @@ class TechnologyControllerTest {
                 .build();
     }
 
+    // Тест: GET /api/technology – корректные параметры
     @Test
     void testFindAllByFiltersSuccess() throws Exception {
-        List<Technology> technologies = List.of(technology);
-        List<TechnologyDTO> technologyDTOs = List.of(
-                TechnologyDTO.builder()
-                        .id(1L)
-                        .name("Java")
-                        .description("A programming language")
-                        .category("Software")
-                        .ring("ADOPT")
-                        .build()
-        );
-
-        when(technologyService.findAllByFilter(any(), any())).thenReturn(technologies);
-        when(categoryService.findByName("Software")).thenReturn(Optional.of(category));
-        when(sectionService.findByName("Backend")).thenReturn(Optional.of(section));
+        given(categoryService.findByName("Software")).willReturn(Optional.of(category));
+        given(sectionService.findByName("Backend")).willReturn(Optional.of(section));
+        given(technologyService.findAllByFilter(category, section)).willReturn(List.of(technology));
 
         mockMvc.perform(get("/api/technology")
                         .param("category", "Software")
                         .param("section", "Backend"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.technologies[0].name").value("Spring Boot"))
-                .andExpect(jsonPath("$.technologies[0].category").value("BACKEND"))
-                .andExpect(jsonPath("$.technologies[0].ring").value("ADOPT"));
+                .andExpect(jsonPath("$.technologies", hasSize(1)))
+                .andExpect(jsonPath("$.technologies[0].name", is("Spring Boot")))
+                .andExpect(jsonPath("$.technologies[0].category", is("BACKEND")))
+                .andExpect(jsonPath("$.technologies[0].ring", is("ADOPT")));
     }
 
+    // Тест: GET /api/technology – неверные параметры (не найдена категория)
+    @Test
+    void testFindAllByFiltersInvalidParameters() throws Exception {
+        given(categoryService.findByName("Unknown")).willReturn(Optional.empty());
+        given(sectionService.findByName("Backend")).willReturn(Optional.of(section));
+
+        mockMvc.perform(get("/api/technology")
+                        .param("category", "Unknown")
+                        .param("section", "Backend"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error", is("Invalid query parameters")))
+                .andExpect(jsonPath("$.details.category", is("CATEGORY NOT FOUND")));
+    }
+
+    // Тест: GET /api/dashboard/{tech_id} – успешное получение дашборда
     @Test
     void testGetVotesCountForAllRingsSuccess() throws Exception {
-        Map<String, Integer> votes = Map.of("ADOPT", 10, "TRIAL", 5);
-        TechnologyWithPollsResultDTO expectedResponse = TechnologyWithPollsResultDTO.builder()
-                .techId(1L)
-                .name("Java")
-                .category("Software")
-                .section("Backend")
-                .votes(votes)
-                .build();
+        Map<String, Integer> votes = new HashMap<>();
+        votes.put("ADOPT", 10);
+        votes.put("TRIAL", 5);
 
-        when(technologyService.findOne(1)).thenReturn(Optional.of(technology));
-        when(pollService.countUsersForTechByAllRings(1)).thenReturn(votes);
+        given(technologyService.findOne(1)).willReturn(Optional.of(technology));
+        given(pollService.countUsersForTechByAllRings(1)).willReturn(votes);
 
         mockMvc.perform(get("/api/dashboard/1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.techId").value(1))
-                .andExpect(jsonPath("$.name").value("Spring Boot"))
-                .andExpect(jsonPath("$.votes.ADOPT").value(10))
-                .andExpect(jsonPath("$.votes.TRIAL").value(5));
+                .andExpect(jsonPath("$.techId", is(1)))
+                .andExpect(jsonPath("$.name", is("Spring Boot")))
+                .andExpect(jsonPath("$.category", is("BACKEND")))
+                .andExpect(jsonPath("$.section", is("TOOLS")))
+                .andExpect(jsonPath("$.votes.ADOPT", is(10)))
+                .andExpect(jsonPath("$.votes.TRIAL", is(5)));
     }
 
+    // Тест: GET /api/dashboard/{tech_id} – технология не найдена
+    @Test
+    void testGetVotesCountForAllRingsTechnologyNotFound() throws Exception {
+        given(technologyService.findOne(99)).willReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/dashboard/99"))
+                .andExpect(status().isNotFound());
+    }
+
+    // Тест: POST /poll – успешное добавление опроса
     @Test
     void testSendPollSuccess() throws Exception {
-        when(ringService.findByName("ADOPT")).thenReturn(Optional.of(Ring.builder().ringName("ADOPT").build()));
-        when(userService.findById(1)).thenReturn(Optional.of(new User()));
-        when(technologyService.findOne(1)).thenReturn(Optional.of(technology));
+        given(ringService.findByName("ADOPT")).willReturn(Optional.of(ring));
+        given(userService.findById(1)).willReturn(Optional.of(User.builder().userId(1L).build()));
+        given(technologyService.findOne(1)).willReturn(Optional.of(technology));
+
 
         mockMvc.perform(post("/poll")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(pollDTO)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Результат опроса успешно добавлен"));
+                .andExpect(jsonPath("$.message", is("Результат опроса успешно добавлен")));
     }
 
+    // Тест: POST /poll – ошибка валидации (например, отсутствует ringResult)
     @Test
     void testSendPollBadRequest() throws Exception {
-        pollDTO.setRingResult(null);  // Invalid data to trigger BAD REQUEST
+        pollDTO.setRingResult(null); // некорректные данные
 
         mockMvc.perform(post("/poll")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(pollDTO)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("400"))
-                .andExpect(jsonPath("$.message").value("BAD REQUEST"));
+                .andExpect(jsonPath("$.code", is("400")))
+                .andExpect(jsonPath("$.message", is("BAD REQUEST")));
+    }
+
+    // Тест: POST /poll – внутренняя ошибка сервера при сохранении опроса
+    @Test
+    void testSendPollInternalServerError() throws Exception {
+        given(ringService.findByName("ADOPT")).willReturn(Optional.of(ring));
+        given(userService.findById(1)).willReturn(Optional.of(User.builder().userId(1L).build()));
+        given(technologyService.findOne(1)).willReturn(Optional.of(technology));
+        BDDMockito.willThrow(new RuntimeException("DB error"))
+                .given(pollService).save(any(Poll.class));
+
+        mockMvc.perform(post("/poll")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(pollDTO)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code", is("500")))
+                .andExpect(jsonPath("$.message", is("INTERNAL_SERVER_ERROR")));
     }
 }
+
