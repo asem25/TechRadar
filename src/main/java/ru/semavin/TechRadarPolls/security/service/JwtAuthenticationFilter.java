@@ -12,8 +12,13 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import ru.semavin.TechRadarPolls.dtos.TokenRequest;
+import ru.semavin.TechRadarPolls.listener.TechRadarKafkaListener;
+import ru.semavin.TechRadarPolls.producer.TechRadarKafkaProducer;
 
 import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 @Component
 @Slf4j
@@ -22,10 +27,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtTokenProvider jwtTokenProvider;
 
     private final CustomUserDetailsService customUserDetailsService;
+    private final TechRadarKafkaProducer techRadarKafkaProducer;
+    private final TechRadarKafkaListener techRadarKafkaListener;
 
-    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider, CustomUserDetailsService customUserDetailsService) {
+    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider, CustomUserDetailsService customUserDetailsService, TechRadarKafkaProducer techRadarKafkaProducer, TechRadarKafkaListener techRadarKafkaListener) {
         this.jwtTokenProvider = jwtTokenProvider;
         this.customUserDetailsService = customUserDetailsService;
+        this.techRadarKafkaProducer = techRadarKafkaProducer;
+        this.techRadarKafkaListener = techRadarKafkaListener;
     }
 
     @Override
@@ -37,22 +46,36 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String token = authHeader.substring(7);
             log.info("Received Token: {}", token);
 
-            if (jwtTokenProvider.validateToken(token)) {
-                log.info("Token is valid.");
-                String email = jwtTokenProvider.getEmailFromToken(token);
-                log.info("Extracted email from token: {}", email);
+            try {
+                if(validateTokenAsync(token)) {
+                    if (jwtTokenProvider.validateToken(token)) {
+                        log.info("Token is valid.");
+                        String email = jwtTokenProvider.getEmailFromToken(token);
+                        log.info("Extracted email from token: {}", email);
 
-                UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-            } else {
-                SecurityContextHolder.clearContext();
-                log.warn("Token validation failed.");
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.getWriter().write("Token expired or invalid");
-                return;
+                        UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
+                        UsernamePasswordAuthenticationToken authentication =
+                                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                    } else {
+                        SecurityContextHolder.clearContext();
+                        log.warn("Token validation failed.");
+                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                        response.getWriter().write("Token expired or invalid");
+                        return;
+                    }
+                }else{
+                    SecurityContextHolder.clearContext();
+                    log.warn("Token validation failed.");
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.getWriter().write("Token invalid");
+                    return;
+                }
+            } catch (Exception e) {
+
+                response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+                response.getWriter().write("auth server is not working");
             }
         }else{
             log.warn("Auth headers is empty");
@@ -60,7 +83,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
         filterChain.doFilter(request, response);
     }
+    private boolean validateTokenAsync(String token) throws Exception {
+        CompletableFuture<Boolean> future = techRadarKafkaListener.validateTokenAsync("validate");
 
+        techRadarKafkaProducer.sendValidateEvent("validate",
+                TokenRequest.builder()
+                .jwtToken(token)
+                .build());
+
+        return future.get(3, TimeUnit.SECONDS);
+    }
 
 
 }

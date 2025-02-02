@@ -21,7 +21,10 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 public class TechRadarKafkaListener {
     private final ConcurrentHashMap<String, CompletableFuture<String>> responseMap = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, CompletableFuture<Boolean>> validationMap = new ConcurrentHashMap<>();
+
     private final ObjectMapper objectMapper;
+
     @Autowired
     public TechRadarKafkaListener(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
@@ -32,12 +35,18 @@ public class TechRadarKafkaListener {
         responseMap.put(key, future);
         return future;
     }
+    public CompletableFuture<Boolean> validateTokenAsync(String key) {
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        validationMap.put(key, future);
+        return future;
+    }
+
     @KafkaListener(topics = {"user.register.response"})
     public void handleRegisterResponse(ConsumerRecord<String, String> record) {
         String key = record.key();
         String jsonMessage = record.value();
         try {
-            if(isValidJson(jsonMessage, KafkaResponse.class)) {
+            if (isValidJson(jsonMessage, KafkaResponse.class)) {
                 KafkaResponse response = objectMapper.readValue(jsonMessage, KafkaResponse.class);
                 log.info("Received response for key {}: {}", key, response);
 
@@ -47,7 +56,7 @@ public class TechRadarKafkaListener {
                 } else {
                     log.warn("No CompletableFuture found for key: {}", key);
                 }
-            }else {
+            } else {
                 log.error("Unknown message format for key {}: {}", key, jsonMessage);
                 CompletableFuture<String> future = responseMap.remove(key);
                 if (future != null) {
@@ -58,6 +67,7 @@ public class TechRadarKafkaListener {
             log.error("Error deserializing Kafka message: {}", record.value(), e);
         }
     }
+
     @KafkaListener(topics = {"user.login.response"})
     public void handleLoginResponse(ConsumerRecord<String, String> record) {
         String key = record.key();
@@ -66,8 +76,7 @@ public class TechRadarKafkaListener {
         try {
             if (isValidJson(jsonMessage, AuthResponse.class)) {
                 handleAuthResponse(key, jsonMessage);
-            }
-            else if (isValidJson(jsonMessage, KafkaResponse.class)) {
+            } else if (isValidJson(jsonMessage, KafkaResponse.class)) {
                 handleKafkaResponse(key, jsonMessage);
             } else {
                 log.error("Unknown message format for key {}: {}", key, jsonMessage);
@@ -84,17 +93,58 @@ public class TechRadarKafkaListener {
             }
         }
     }
+
     @KafkaListener(topics = "user.token.response")
-    public void handleRefreshTokenResponse(ConsumerRecord<String, String> record){
+    public void handleRefreshTokenResponse(ConsumerRecord<String, String> record) {
+        String key = record.key();
+        String jsonMessage = record.value();
+        try {
+            if (isValidJson(jsonMessage, AuthResponse.class)) {
+                handleAuthResponse(key, jsonMessage);
+            } else if (isValidJson(jsonMessage, KafkaResponse.class)) {
+                handleKafkaResponse(key, jsonMessage);
+            }
+        } catch (JsonProcessingException e) {
+            log.error("Error deserializing Kafka message: {}", record.value(), e);
+            CompletableFuture<String> future = responseMap.remove(key);
+            if (future != null) {
+                future.completeExceptionally(e);
+            }
+        }
+    }
+    @KafkaListener(topics = "user.validate.response")
+    public void handleValidateResponse(ConsumerRecord<String, String> record){
+        String key = record.key();
+        String jsonMessage = record.value();
+
+        try {
+            KafkaResponse response = objectMapper.readValue(jsonMessage, KafkaResponse.class);
+            log.info("Received token validation response: {}", response);
+
+            CompletableFuture<Boolean> future = validationMap.remove(key);
+            if (future != null) {
+                boolean isValid = response.getEventType().equalsIgnoreCase("VALID");
+                future.complete(isValid);
+            } else {
+                log.warn("No CompletableFuture found for key: {}", key);
+            }
+        } catch (JsonProcessingException e) {
+            log.error("Error deserializing Kafka message: {}", record.value(), e);
+            CompletableFuture<Boolean> future = validationMap.remove(key);
+            if (future != null) {
+                future.completeExceptionally(e);
+            }
+        }
+    }
+    @KafkaListener(topics = "user.logout.response")
+    public void handleLogoutResponse(ConsumerRecord<String, String> record){
         String key = record.key();
         String jsonMessage = record.value();
         try{
-            if (isValidJson(jsonMessage, AuthResponse.class)){
-                handleAuthResponse(key, jsonMessage);
-            }else if(isValidJson(jsonMessage, KafkaResponse.class)){
-               handleKafkaResponse(key, jsonMessage);
+            if (isValidJson(jsonMessage, KafkaResponse.class)){
+                handleKafkaResponse(key, jsonMessage);
             }
-        }catch (JsonProcessingException e){
+        } catch (JsonProcessingException e) {
             log.error("Error deserializing Kafka message: {}", record.value(), e);
             CompletableFuture<String> future = responseMap.remove(key);
             if (future != null) {
@@ -114,6 +164,7 @@ public class TechRadarKafkaListener {
             log.warn("No CompletableFuture found for key: {}", key);
         }
     }
+
     private void handleKafkaResponse(String key, String jsonMessage) throws JsonProcessingException {
         KafkaResponse response = objectMapper.readValue(jsonMessage, KafkaResponse.class);
         log.info("Received KafkaResponse for key {}: {}", key, response);

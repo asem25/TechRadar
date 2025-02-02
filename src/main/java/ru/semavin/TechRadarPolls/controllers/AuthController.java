@@ -83,4 +83,27 @@ public class AuthController {
                     .body("Refresh process timed out. Please try again later.");
         }
     }
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout(@RequestHeader("Authorization") String accessToken,
+                                         @RequestBody RefreshRequest refreshRequest){
+        try {
+            CompletableFuture<String> futureResponse = techRadarKafkaListener.registerResponseFuture("logout");
+            techRadarKafkaProducer.sendLogoutEvent("logout", AuthResponse.builder()
+                    .accessToken(accessToken)
+                    .refreshToken(refreshRequest.getRefreshToken()).build());
+
+            String response = futureResponse.get(10, TimeUnit.SECONDS);
+            return ResponseEntity.ok(response);
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return ResponseEntity.status(500).body("Refresh process was interrupted. Please try again.");
+        } catch (ExecutionException e) {
+            return ResponseEntity.status(500)
+                    .body("An error occurred during Refresh: " + e.getCause().getMessage());
+        } catch (TimeoutException e) {
+            return ResponseEntity.status(500)
+                    .body("Refresh process timed out. Please try again later.");
+        }
+    }
 }
