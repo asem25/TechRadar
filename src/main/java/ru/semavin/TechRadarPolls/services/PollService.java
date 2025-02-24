@@ -2,6 +2,7 @@ package ru.semavin.TechRadarPolls.services;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.semavin.TechRadarPolls.models.Ring;
 import ru.semavin.TechRadarPolls.models.Poll;
 import ru.semavin.TechRadarPolls.repositories.PollRepository;
@@ -39,7 +40,10 @@ public class PollService {
                 ));
 
     }
+
+    @Transactional
     public void save(Poll poll){
         pollRepository.save(poll);
     }
+
 }

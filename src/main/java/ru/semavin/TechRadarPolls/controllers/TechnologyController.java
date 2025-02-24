@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
@@ -19,48 +20,41 @@ import ru.semavin.TechRadarPolls.util.*;
 
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 @RestController
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "Главный контроллер",
-        description = "Реализует механизм опросов для сервиса ТЕХРАДАР" )
+        description = "Реализует механизм опросов для сервиса ТЕХРАДАР")
 public class TechnologyController {
     private final TechnologyService technologyService;
     private final PollService pollService;
-    private final ModelMapper modelMapper;
     private final RingService ringService;
     private final UserService userService;
     private final CategoryService categoryService;
     private final SectionService sectionService;
+
     @GetMapping("/api/technology")
     @Operation(summary = "Запрос для формирования техрадара.",
-                description = ". Возвращает список всех технологий,\n" +
-                        "соответствующих фильтрам (категория, секция), кроме архивированных.")
+            description = ". Возвращает список всех технологий,\n" +
+                    "соответствующих фильтрам (категория, секция), кроме архивированных.")
     public ResponseEntity<Map<String, Object>> findAllByFilters(@RequestParam(required = false) String category,
-                                             @RequestParam(required = false) String section){
-        Map<String, String> errors = new HashMap<>();
+                                                                @RequestParam(required = false) String section) {
+
+
+        List<String> errors = new ArrayList<>();
         Section sectionObject = null;
         if (section != null) {
-             sectionObject = sectionService.findByName(section)
-                    .orElseGet(() -> {
-                        errors.put("section", "SECTION NOT FOUND");
-                        return null;
-                    });
-             log.info("found sectionObject: " + sectionObject);
+            sectionObject = sectionService.findByNameWithListExceptions(section, errors);
+            log.info("found sectionObject: " + sectionObject);
         }
         Category categoryObject = null;
         if (category != null) {
-             categoryObject = categoryService.findByName(category)
-                    .orElseGet(() -> {
-                        errors.put("category", "CATEGORY NOT FOUND");
-                        return null;
-                    });
+            categoryObject = categoryService.findByNameWithListExceptions(category, errors);
             log.info("found sectionObject: " + categoryObject);
         }
 
@@ -71,9 +65,11 @@ public class TechnologyController {
             response.put("details", errors);
             return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
         }
-        List<TechnologyDTO> technologies = convertToListDto(technologyService
-                .findAllByFilter(categoryObject, sectionObject));
 
+        List<TechnologyDTO> technologies = technologyService.convertToListDto(
+                technologyService
+                .findAllByFilter(categoryObject, sectionObject));
+        log.info("technologies from controller on point /api/technologies " + technologies);
 
         Map<String, Object> response = new HashMap<>();
         response.put("technologies", technologies);
@@ -86,8 +82,7 @@ public class TechnologyController {
             description = "Возвращает количество актуальных голосов\n" +
                     "за указанную технологию (последний голос каждого пользователя).")
     public TechnologyWithPollsResultDTO getVotesCountForAllRings(@PathVariable(name = "tech_id") Integer id) throws ErrorResponseServer {
-        Technology technology = technologyService.findOne(id)
-                .orElseThrow(() -> new TechnologyNotFoundException("TECHNOLOGY NOT FOUND"));
+        Technology technology = technologyService.findOne(id);
         TechnologyWithPollsResultDTO resultDTO = null;
         try {
             resultDTO = TechnologyWithPollsResultDTO.builder()
@@ -104,14 +99,15 @@ public class TechnologyController {
         log.info("Controller/api/dashboard/" + id + ":return result info: " + resultDTO);
         return resultDTO;
     }
+
     @PostMapping("/poll")
     @Operation(summary = "Запрос на добавление результата опроса для указанной технологии.",
             description = " Данные добавляются в\n" +
                     "таблицу опросников для указанной технологии.")
     public MessageResponsePoll sendPoll(@RequestBody @Valid PollDTO pollDTO,
-                                        BindingResult bindingResult){
+                                        BindingResult bindingResult) {
         try {
-            if (bindingResult.hasErrors()){
+            if (bindingResult.hasErrors()) {
                 log.warn("Controller/poll: code 400");
                 return MessageResponsePoll.builder().code("400")
                         .message("BAD REQUEST")
@@ -129,24 +125,11 @@ public class TechnologyController {
                 .message("Результат опроса успешно добавлен")
                 .build();
     }
-    private Poll convertPollDtoToPoll(PollDTO pollDTO){
-        Ring ring = ringService.findByName(pollDTO.getRingResult())
-                .orElseThrow(() -> new RingNotFoundException("RING NOT FOUND"));
-        User user = userService.findById(pollDTO.getUser_id())
-                .orElseThrow(() -> new UserNotFoundException("USER NOT FOUND"));
-        Technology technology = technologyService.findOne(pollDTO.getTech_id())
-                .orElseThrow(() -> new TechnologyNotFoundException("TECHNOLOGY NOT FOUND"));
+    private Poll convertPollDtoToPoll(PollDTO pollDTO) {
+        Ring ring = ringService.findByName(pollDTO.getRingResult());
+        User user = userService.findById(pollDTO.getUser_id());
+        Technology technology = technologyService.findOne(pollDTO.getTech_id());
         return Poll.builder().user(user).technology(technology).ring(ring)
                 .time(LocalDateTime.now()).build();
-    }
-    private List<TechnologyDTO> convertToListDto(List<Technology> technologies){
-        return technologies.stream().map(technology -> TechnologyDTO.builder()
-                .id(technology.getTechId())
-                .name(technology.getName())
-                .description(technology.getDescription())
-                .category(technology.getCategory().getCatName())
-                .ring(technology.getRing().getRingName())
-                .build())
-                .collect(Collectors.toList());
     }
 }

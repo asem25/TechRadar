@@ -13,7 +13,6 @@ import java.util.concurrent.CompletableFuture;
 
 @Service
 @Slf4j
-//TODO для обновления токена
 public class TechRadarKafkaProducer {
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final ObjectMapper ob;

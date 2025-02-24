@@ -4,12 +4,20 @@ import org.mockito.Mockito;
 import org.modelmapper.ModelMapper;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
+import ru.semavin.TechRadarPolls.listener.TechRadarKafkaListener;
+import ru.semavin.TechRadarPolls.producer.TechRadarKafkaProducer;
+import ru.semavin.TechRadarPolls.repositories.TechnologyRepository;
 import ru.semavin.TechRadarPolls.security.service.CustomUserDetailsService;
 import ru.semavin.TechRadarPolls.security.service.JwtTokenProvider;
 import ru.semavin.TechRadarPolls.services.*;
 
 @TestConfiguration
 public class TestConfig {
+    @Bean
+    public TechRadarKafkaProducer techRadarKafkaProducer(){ return Mockito.mock(TechRadarKafkaProducer.class);}
+
+    @Bean
+    public TechRadarKafkaListener techRadarKafkaListener(){ return Mockito.mock(TechRadarKafkaListener.class);}
     @Bean
     public JwtTokenProvider jwtTokenProvider(){
         return Mockito.mock(JwtTokenProvider.class);
@@ -47,6 +55,11 @@ public class TestConfig {
     @Bean
     public ModelMapper modelMapper() {
         return Mockito.mock(ModelMapper.class);
+    }
+    @Bean
+    public TechnologyRepository technologyRepository()
+    {
+        return Mockito.mock(TechnologyRepository.class);
     }
     @Bean
     public CustomUserDetailsService customUserDetailsService(){

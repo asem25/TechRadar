@@ -4,10 +4,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import ru.semavin.TechRadarPolls.util.ErrorResponseServer;
-import ru.semavin.TechRadarPolls.util.RingNotFoundException;
-import ru.semavin.TechRadarPolls.util.TechnologyNotFoundException;
-import ru.semavin.TechRadarPolls.util.UserNotFoundException;
+import ru.semavin.TechRadarPolls.util.*;
 
 @ControllerAdvice(basePackages = "ru.semavin.TechRadarPolls.controllers")
 public class GlobalControllerAdvice {

@@ -4,14 +4,25 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ru.semavin.TechRadarPolls.models.Section;
 import ru.semavin.TechRadarPolls.repositories.SectionRepository;
+import ru.semavin.TechRadarPolls.util.BaseNotFoundException;
 
-import java.util.Optional;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class SectionService {
     private final SectionRepository sectionRepository;
-    public Optional<Section> findByName(String section){
-        return sectionRepository.findBySecNameIgnoreCase(section);
+    public Section findByName(String section){
+        return sectionRepository.findBySecNameIgnoreCase(section)
+                .orElseThrow(() -> BaseNotFoundException.create(Section.class));
+    }
+    public Section findByNameWithListExceptions(String section, List<String> exceptionMessageList){
+        return sectionRepository.findBySecNameIgnoreCase(section).orElseGet(
+                () ->
+                {
+                    exceptionMessageList.add(BaseNotFoundException.create(Section.class).getMessage());
+                    return null;
+                }
+        );
     }
 }
