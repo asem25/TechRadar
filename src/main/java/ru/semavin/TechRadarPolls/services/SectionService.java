@@ -17,6 +17,11 @@ public class SectionService {
                 .orElseThrow(() -> BaseNotFoundException.create(Section.class));
     }
     public Section findByNameWithListExceptions(String section, List<String> exceptionMessageList){
+        if (section == null){
+            return null;
+        }
+
+
         return sectionRepository.findBySecNameIgnoreCase(section).orElseGet(
                 () ->
                 {

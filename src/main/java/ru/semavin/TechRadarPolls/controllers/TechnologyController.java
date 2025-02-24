@@ -47,16 +47,9 @@ public class TechnologyController {
 
 
         List<String> errors = new ArrayList<>();
-        Section sectionObject = null;
-        if (section != null) {
-            sectionObject = sectionService.findByNameWithListExceptions(section, errors);
-            log.info("found sectionObject: " + sectionObject);
-        }
-        Category categoryObject = null;
-        if (category != null) {
-            categoryObject = categoryService.findByNameWithListExceptions(category, errors);
-            log.info("found sectionObject: " + categoryObject);
-        }
+
+        Section sectionObject = sectionService.findByNameWithListExceptions(section, errors);
+        Category categoryObject = categoryService.findByNameWithListExceptions(category, errors);
 
         if (!errors.isEmpty()) {
             log.error("Controller/api/technology: Map with errors not empty");
@@ -83,7 +76,7 @@ public class TechnologyController {
                     "за указанную технологию (последний голос каждого пользователя).")
     public TechnologyWithPollsResultDTO getVotesCountForAllRings(@PathVariable(name = "tech_id") Integer id) throws ErrorResponseServer {
         Technology technology = technologyService.findOne(id);
-        TechnologyWithPollsResultDTO resultDTO = null;
+        TechnologyWithPollsResultDTO resultDTO;
         try {
             resultDTO = TechnologyWithPollsResultDTO.builder()
                     .techId(technology.getTechId())

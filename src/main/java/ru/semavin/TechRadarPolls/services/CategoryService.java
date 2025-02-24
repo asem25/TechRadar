@@ -17,6 +17,9 @@ public class CategoryService {
 
     }
     public Category findByNameWithListExceptions(String name, List<String> exceptinMessageList){
+        if (name == null){
+            return null;
+        }
         return categoryRepository.findByCatNameIgnoreCase(name).orElseGet(
                 () ->
                 {
