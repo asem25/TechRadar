@@ -45,5 +45,8 @@ public class PollService {
     public void save(Poll poll){
         pollRepository.save(poll);
     }
-
+    @Transactional
+    public void deleteByTechnology(Integer id){
+        pollRepository.deleteByTechnologyTechId(Long.valueOf(id));
+    }
 }

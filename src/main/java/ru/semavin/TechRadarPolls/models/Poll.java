@@ -28,7 +28,7 @@ public class Poll {
     @JoinColumn(name = "tech_id", nullable = false)
     private Technology technology;
 
-    @ManyToOne(fetch = FetchType.LAZY) // Связь с Ring
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ring_id", nullable = false)
     private Ring ring;
 

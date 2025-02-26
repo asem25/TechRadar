@@ -9,7 +9,7 @@ import lombok.Data;
 @Builder
 @JsonInclude(JsonInclude.Include.ALWAYS)
 @Schema(description = "DTO для представления данных о технологии")
-public class TechnologyDTO {
+public class TechnologyGetDTO {
     private Long id;
     private String name;
     private String description;

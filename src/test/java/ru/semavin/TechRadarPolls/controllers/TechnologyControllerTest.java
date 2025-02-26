@@ -8,16 +8,13 @@ import org.mockito.BDDMockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import ru.semavin.TechRadarPolls.config.TestConfig;
-import ru.semavin.TechRadarPolls.controllers.TechnologyController;
 import ru.semavin.TechRadarPolls.dtos.PollDTO;
-import ru.semavin.TechRadarPolls.dtos.TechnologyDTO;
+import ru.semavin.TechRadarPolls.dtos.TechnologyGetDTO;
 import ru.semavin.TechRadarPolls.models.*;
-import ru.semavin.TechRadarPolls.repositories.TechnologyRepository;
 import ru.semavin.TechRadarPolls.services.*;
 import ru.semavin.TechRadarPolls.util.BaseNotFoundException;
 
@@ -65,7 +62,7 @@ class TechnologyControllerTest {
     private Section section;
     private Ring ring;
     private PollDTO pollDTO;
-    private TechnologyDTO technologyDTO;
+    private TechnologyGetDTO technologyGetDTO;
 
 
     @BeforeEach
@@ -93,7 +90,7 @@ class TechnologyControllerTest {
                 .section(section)
                 .ring(ring)
                 .build();
-        technologyDTO = TechnologyDTO.builder()
+        technologyGetDTO = TechnologyGetDTO.builder()
                 .name(technology.getName())
                 .description(technology.getDescription())
                 .category(category.getCatName())
@@ -116,7 +113,7 @@ class TechnologyControllerTest {
         given(sectionService.findByNameWithListExceptions("Backend", list)).willReturn((section));
 
         given(technologyService.findAllByFilter(category, section)).willReturn(((List.of(technology))));
-        given(technologyService.convertToListDto(List.of(technology))).willReturn(List.of(technologyDTO));
+        given(technologyService.convertToListDto(List.of(technology))).willReturn(List.of(technologyGetDTO));
 
         mockMvc.perform(get("/api/technology")
                         .queryParam("category", "Software")

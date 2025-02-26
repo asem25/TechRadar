@@ -5,14 +5,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import ru.semavin.TechRadarPolls.dtos.PollDTO;
-import ru.semavin.TechRadarPolls.dtos.TechnologyDTO;
+import ru.semavin.TechRadarPolls.dtos.TechnologyGetDTO;
+import ru.semavin.TechRadarPolls.dtos.TechnologyPostDTO;
 import ru.semavin.TechRadarPolls.dtos.TechnologyWithPollsResultDTO;
 import ru.semavin.TechRadarPolls.models.*;
 import ru.semavin.TechRadarPolls.services.*;
@@ -21,9 +20,6 @@ import ru.semavin.TechRadarPolls.util.*;
 
 import java.time.LocalDateTime;
 import java.util.*;
-
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 @RestController
 @RequiredArgsConstructor
@@ -44,13 +40,9 @@ public class TechnologyController {
                     "соответствующих фильтрам (категория, секция), кроме архивированных.")
     public ResponseEntity<Map<String, Object>> findAllByFilters(@RequestParam(required = false) String category,
                                                                 @RequestParam(required = false) String section) {
-
-
         List<String> errors = new ArrayList<>();
-
         Section sectionObject = sectionService.findByNameWithListExceptions(section, errors);
         Category categoryObject = categoryService.findByNameWithListExceptions(category, errors);
-
         if (!errors.isEmpty()) {
             log.error("Controller/api/technology: Map with errors not empty");
             Map<String, Object> response = new HashMap<>();
@@ -59,7 +51,7 @@ public class TechnologyController {
             return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
         }
 
-        List<TechnologyDTO> technologies = technologyService.convertToListDto(
+        List<TechnologyGetDTO> technologies = technologyService.convertToListDto(
                 technologyService
                 .findAllByFilter(categoryObject, sectionObject));
         log.info("technologies from controller on point /api/technologies " + technologies);
@@ -118,6 +110,24 @@ public class TechnologyController {
                 .message("Результат опроса успешно добавлен")
                 .build();
     }
+    @PostMapping("/api/technology")
+    public ResponseEntity<String> postTechnology(@RequestBody @Valid TechnologyPostDTO technologyPostDTO){
+        Ring ring = ringService.findByName(technologyPostDTO.getRing());
+        Category category = categoryService.findByName(technologyPostDTO.getCategory());
+        Section section = sectionService.findByName(technologyPostDTO.getSection());
+        return ResponseEntity.ok(technologyService.save(technologyPostDTO, ring, category, section).getName() + " saved successful");
+    }
+    @PatchMapping("/api/technology/archive/{id}")
+    public ResponseEntity<String> archiveTechnology(@PathVariable(name = "id") Integer id){
+        technologyService.archive(id);
+        return ResponseEntity.ok("Technology with id " + id + " archived");
+    }
+    @DeleteMapping("/api/technology/{id}")
+    public ResponseEntity<String> deleteTechnology(@PathVariable(name = "id") Integer id){
+        pollService.deleteByTechnology(id);
+        technologyService.delete(id);
+        return ResponseEntity.ok("Technology " + id + " deleted successfully" );
+    }
     private Poll convertPollDtoToPoll(PollDTO pollDTO) {
         Ring ring = ringService.findByName(pollDTO.getRingResult());
         User user = userService.findById(pollDTO.getUser_id());
@@ -125,4 +135,5 @@ public class TechnologyController {
         return Poll.builder().user(user).technology(technology).ring(ring)
                 .time(LocalDateTime.now()).build();
     }
+
 }

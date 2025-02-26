@@ -15,5 +15,5 @@ public class TechnologyStatus {
     private Long stat_id;
 
     @Column(name = "stat_name", nullable = false)
-    private String stat_name;
+    private String status;
 }

@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.Cascade;
 
 import java.time.LocalDateTime;
 
@@ -22,6 +23,7 @@ public class Technology {
 
     @ManyToOne()
     @JoinColumn(name = "cat_id", referencedColumnName = "cat_id")
+    @Cascade(org.hibernate.annotations.CascadeType.ALL)
     private Category category;
 
     @ManyToOne()

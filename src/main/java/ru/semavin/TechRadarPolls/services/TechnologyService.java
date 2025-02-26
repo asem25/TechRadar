@@ -1,18 +1,20 @@
 package ru.semavin.TechRadarPolls.services;
 
 import lombok.RequiredArgsConstructor;
+import org.hibernate.usertype.UserCollectionType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.semavin.TechRadarPolls.dtos.TechnologyDTO;
-import ru.semavin.TechRadarPolls.models.Category;
-import ru.semavin.TechRadarPolls.models.Section;
-import ru.semavin.TechRadarPolls.models.Technology;
+import ru.semavin.TechRadarPolls.dtos.TechnologyGetDTO;
+import ru.semavin.TechRadarPolls.dtos.TechnologyPostDTO;
+import ru.semavin.TechRadarPolls.models.*;
 import ru.semavin.TechRadarPolls.repositories.TechnologyRepository;
+import ru.semavin.TechRadarPolls.repositories.TechnologyStatusRepository;
 import ru.semavin.TechRadarPolls.util.BaseNotFoundException;
-import ru.semavin.TechRadarPolls.util.TechnologyNotFoundException;
 
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -24,6 +26,9 @@ public class TechnologyService {
 
     private static final Logger log = LoggerFactory.getLogger(TechnologyService.class);
     private  final TechnologyRepository technologyRepository;
+    private final TechnologyStatusRepository technologyStatusRepository;
+
+
     public Technology findOne(Integer techId){
         return technologyRepository.findById(Long.valueOf(techId)).orElseThrow(() -> BaseNotFoundException.create(Technology.class));
     }
@@ -58,7 +63,7 @@ public class TechnologyService {
                         }
                 );
     }
-    public List<TechnologyDTO> convertToListDto(List<Technology> technologies) {
+    public List<TechnologyGetDTO> convertToListDto(List<Technology> technologies) {
 
         if (technologies == null){
             return Collections.emptyList();
@@ -70,7 +75,7 @@ public class TechnologyService {
         return technologies.stream()
                 .map(technology -> {
                     log.info("Mapping technology: {}", technology);
-                    return TechnologyDTO.builder()
+                    return TechnologyGetDTO.builder()
                             .id(technology.getTechId())
                             .name(technology.getName())
                             .description(technology.getDescription())
@@ -79,5 +84,29 @@ public class TechnologyService {
                             .build();
                 })
                 .collect(Collectors.toList());
+    }
+    public Technology save(TechnologyPostDTO technology, Ring ring, Category category, Section section) {
+        return technologyRepository.save(convertToPostDto(technology, category, ring, section));
+    }
+
+    private Technology convertToPostDto(TechnologyPostDTO technology, Category category, Ring ring, Section section) {
+        return Technology.builder()
+                .category(category)
+                .name(technology.getName())
+                .description(technology.getDescription())
+                .ring(ring)
+                .section(section)
+                .updateTime(LocalDateTime.now())
+                .status(technologyStatusRepository.findByStatusIgnoreCase(technology.getStatuses()).orElseThrow(() -> BaseNotFoundException.create(TechnologyStatus.class)))
+                .build();
+    }
+
+    public void delete(Integer id) {
+        technologyRepository.delete(findOne(id));
+    }
+    public void archive(Integer id){
+        Technology technology = findOne(id);
+        technology.setStatus(technologyStatusRepository.findByStatusIgnoreCase("archived").orElseThrow(() -> BaseNotFoundException.create(TechnologyStatus.class)));
+        technologyRepository.save(technology);
     }
 }

@@ -10,7 +10,7 @@ import java.util.List;
 public interface PollRepository extends JpaRepository<Poll, Long> {
 
     List<Poll> findByTechnologyTechId(Long technology_techId);
-
+    void deleteByTechnologyTechId(Long technology_techId);
 
 
 }
